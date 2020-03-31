@@ -71,11 +71,11 @@ class Corner
   end
 end
 
-
 class Window < Gosu::Window
 	def initialize(width, height)
 		super(width, height, {:resizable => true})
 		self.caption = "Cards Against Humanity"
+
 		@scale = 1.0
 		@backgroundColor = Gosu::Color.new(255, 224, 224, 224)
 		@borderColor = Gosu::Color.new(255, 155, 155, 155)
@@ -88,10 +88,30 @@ class Window < Gosu::Window
 		@corner = Gosu::Image.new(Corner.new(@cornerRadius))
 	end
 
-	def update
-		# update
+	# Draws a line of text without spaces between underscores
+	def drawLineWithBlanks(font, text, x, y, z, color, scale)
+		text.split(" ").each do |word|
+			if (word.match(/_/))
+				split = word.scan(/(_*)(.*)/)[0]
+				blankWidth = font.text_width(split[0]) * scale
+
+				Gosu.draw_rect(x, y + (font.height - 3) * scale, blankWidth, 1 * scale, color, z)
+
+				x += blankWidth
+				if (split.length > 1)
+					font.draw_text(split[1], x, y, z, scale, scale, color)
+					x += font.text_width("#{split[1]} ") * scale
+				else
+					x += font.text_width(" ") * scale
+				end
+			else
+				font.draw_text(word, x, y, z, scale, scale, color)
+				x += font.text_width("#{word} ") * scale
+			end
+		end
 	end
 
+	# Automatically wraps a chunk of text to the provided width
 	def wrapText(font, text, x, y, z, maxWidth, color, scale=1)
 		lineText = ""
 		lineNum = 0
@@ -99,7 +119,8 @@ class Window < Gosu::Window
 		text.split(" ").each do |word|
 			lineWidth = font.text_width("#{lineText} #{word}") * scale
 			if (lineWidth > maxWidth * scale)
-				font.draw_text(lineText, x, y + lineNum * font.height * scale, z, scale, scale, color)
+				
+				drawLineWithBlanks(font, lineText, x, y + lineNum * font.height * scale, z, color, scale)
 				lineText = word
 				lineNum += 1
 			else
@@ -111,10 +132,11 @@ class Window < Gosu::Window
 			end
 		end
 		if (!lineText.empty?)
-			font.draw_text(lineText, x, y + lineNum * font.height * scale, z, scale, scale, color)
+			drawLineWithBlanks(font, lineText, x, y + lineNum * font.height * scale, z, color, scale)
 		end
 	end
 
+	# Draws a very small, square card, as seen in the Cards Against Humanity logo
 	def drawTinyCard(x, y, rotation=0, white=true)
 		Gosu.rotate(rotation, x, y) do
 			Gosu.draw_rect(x - 1, y - 1, 9 * @scale + 2, 10 * @scale + 2, @borderColor, ZOrder::TOP)
@@ -122,6 +144,7 @@ class Window < Gosu::Window
 		end
 	end
 
+	# Draws a quarter-circle, which is used to round out the edges of the cards
 	def drawCorner(cardX, cardY, color, top=true, left=true)
 		drawX = cardX + (left ? 0 : (@cardWidth - @cornerRadius) * @scale)
 		drawY = cardY + (top ? 0 : (@cardHeight - @cornerRadius) * @scale)
@@ -132,6 +155,7 @@ class Window < Gosu::Window
 		@corner.draw(drawX, drawY, ZOrder::MIDDLE, left ? @scale : -@scale, top ? @scale : -@scale, color)
 	end
 
+	# Draws a Cards-Against-Humanity style card with the given text and color
 	def drawCard(x, y, text, white=true)
 		paddingX = 20.0
 		paddingY = 18.0
@@ -162,24 +186,19 @@ class Window < Gosu::Window
 
 	end
 
+	# Gosu draw method
 	def draw
     Gosu.draw_rect(0, 0, self.width, self.height, @backgroundColor, ZOrder::BACKGROUND)
-    drawCard(30, 30, "50% of all marriages end in ___________.", false)
-    drawCard(320, 30, "Politics.");
-    drawCard(610, 30, "This new Netflix documentary you just haaaaaave to see.");
+    drawCard(30 * @scale, 30 * @scale, "50% of all marriages end in ___________.", false)
+    drawCard(320 * @scale, 30 * @scale, "Politics.");
+    drawCard(610 * @scale, 30 * @scale, "This new Netflix documentary you just haaaaaave to see.");
 	end
 
-	def button_down(id)
-		if id == Gosu::KB_ESCAPE or id == Gosu::GP_BUTTON_1
-			close
-		end
-	end
-
+	# Show the cursor at all times
 	def needs_cursor?
 		return true
 	end
 end
-
 
 client = Client.new("localhost", 3000)
 window = Window.new(920, 438)
